@@ -50,22 +50,40 @@ app.post("/logs", async (req, res) => {
 	}
 });
 
+// GET /logs/20250612
 app.get("/logs/:date", async (req, res) => {
-	const { date } = req.params;
-	const startOfDay = new Date(`${date}T00:00:00.000Z`);
-	const endOfDay = new Date(`${date}T23:59:59.999Z`);
-
-	const logs = await Log.find({ timestamp: { $gte: startOfDay, $lt: endOfDay } })
-		.sort({ timestamp: 1 })
-		.select("-_id -__v")
-		.lean();
-
-	return res.json({
-		status: "ok",
+	const { date } = req.params;               // expected: 'YYYYMMDD'
+  
+	// 1️⃣ basic validation
+	if (!/^\d{8}$/.test(date)) {
+	  return res.status(400).json({ status: "error", message: "Invalid date format" });
+	}
+  
+	// 2️⃣ build UTC boundaries robustly
+	const year  = +date.slice(0, 4);
+	const month = +date.slice(4, 6) - 1;       // Date months are 0-based
+	const day   = +date.slice(6, 8);
+  
+	const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0,   0));
+	const endOfDay   = new Date(Date.UTC(year, month, day, 23,59,59, 999));
+  
+	try {
+	  const logs = await Log.find({ timestamp: { $gte: startOfDay, $lt: endOfDay } })
+							.sort({ timestamp: 1 })
+							.select("-_id -__v")
+							.lean();
+  
+	  return res.json({
+		status:    "ok",
 		timestamp: new Date().toISOString(),
-		data: logs,
-	});
-});
+		data:      logs,
+	  });
+	} catch (err) {
+	  console.error(err);
+	  return res.status(500).json({ status: "error", message: "Server error" });
+	}
+  });
+  
 
 app.get("/", async (_req, res) => {
 	const uptimeSeconds = process.uptime();
