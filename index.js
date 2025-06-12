@@ -50,6 +50,23 @@ app.post("/logs", async (req, res) => {
 	}
 });
 
+app.get("/logs/:date", async (req, res) => {
+	const { date } = req.params;
+	const startOfDay = new Date(`${date}T00:00:00.000Z`);
+	const endOfDay = new Date(`${date}T23:59:59.999Z`);
+
+	const logs = await Log.find({ timestamp: { $gte: startOfDay, $lt: endOfDay } })
+		.sort({ timestamp: 1 })
+		.select("-_id -__v")
+		.lean();
+
+	return res.json({
+		status: "ok",
+		timestamp: new Date().toISOString(),
+		data: logs,
+	});
+});
+
 app.get("/", async (_req, res) => {
 	const uptimeSeconds = process.uptime();
 	const mem = process.memoryUsage();
