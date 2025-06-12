@@ -52,38 +52,41 @@ app.post("/logs", async (req, res) => {
 
 // GET /logs/20250612
 app.get("/logs/:date", async (req, res) => {
-	const { date } = req.params;               // expected: 'YYYYMMDD'
-  
+	const { date } = req.params; // expected: 'YYYYMMDD'
+
 	// 1️⃣ basic validation
 	if (!/^\d{8}$/.test(date)) {
-	  return res.status(400).json({ status: "error", message: "Invalid date format" });
+		return res
+			.status(400)
+			.json({ status: "error", message: "Invalid date format" });
 	}
-  
+
 	// 2️⃣ build UTC boundaries robustly
-	const year  = +date.slice(0, 4);
-	const month = +date.slice(4, 6) - 1;       // Date months are 0-based
-	const day   = +date.slice(6, 8);
-  
-	const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0,   0));
-	const endOfDay   = new Date(Date.UTC(year, month, day, 23,59,59, 999));
-  
+	const year = +date.slice(0, 4);
+	const month = +date.slice(4, 6) - 1; // Date months are 0-based
+	const day = +date.slice(6, 8);
+
+	const startOfDay = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
+	const endOfDay = new Date(Date.UTC(year, month, day, 23, 59, 59, 999));
+
 	try {
-	  const logs = await Log.find({ timestamp: { $gte: startOfDay, $lt: endOfDay } })
-							.sort({ timestamp: 1 })
-							.select("-_id -__v")
-							.lean();
-  
-	  return res.json({
-		status:    "ok",
-		timestamp: new Date().toISOString(),
-		data:      logs,
-	  });
+		const logs = await Log.find({
+			timestamp: { $gte: startOfDay, $lt: endOfDay },
+		})
+			.sort({ timestamp: 1 })
+			.select("-_id -__v")
+			.lean();
+
+		return res.json({
+			status: "ok",
+			timestamp: new Date().toISOString(),
+			data: logs,
+		});
 	} catch (err) {
-	  console.error(err);
-	  return res.status(500).json({ status: "error", message: "Server error" });
+		console.error(err);
+		return res.status(500).json({ status: "error", message: "Server error" });
 	}
-  });
-  
+});
 
 app.get("/", async (_req, res) => {
 	const uptimeSeconds = process.uptime();
@@ -98,7 +101,7 @@ app.get("/", async (_req, res) => {
 			rss: `${Math.round(mem.rss / 1024 / 1024)} MB`,
 			heapUsed: `${Math.round(mem.heapUsed / 1024 / 1024)} MB`,
 		},
-		
+
 		versions: {
 			node: process.versions.node,
 			mongoose: mongoose.version,
